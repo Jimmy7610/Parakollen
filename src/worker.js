@@ -30,25 +30,113 @@ export default {
 
         let responseData = null;
 
-        // Helper to simulate the fallback strategy
+        // Helper to simulate fetch with timeout
+        async function fetchWithTimeout(url, options = {}, ms = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), ms);
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            }).catch(() => null);
+            clearTimeout(id);
+            return response;
+        }
+
+        async function safeJson(res) {
+            if (!res || !res.ok) return null;
+            try {
+                return await res.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // IPC Primary Endpoints (Derived from JS parsing)
+        const IPC_BASE = 'https://wrs.paralympic.org/api/v1';
+
+        async function fetchIpcMedals() {
+            const res = await fetchWithTimeout(`${IPC_BASE}/ALL/medals/standings/milano-cortina-2026`);
+            const data = await safeJson(res);
+            if (!data || !Array.isArray(data)) return null;
+
+            // Normalize
+            let hasSwe = false;
+            const standings = data.map(c => {
+                if (c.countryCode === 'SWE') hasSwe = true;
+                return {
+                    countryCode: c.countryCode || 'UNK',
+                    gold: c.gold || 0,
+                    silver: c.silver || 0,
+                    bronze: c.bronze || 0,
+                    total: c.total || 0
+                };
+            });
+
+            if (!hasSwe) {
+                standings.push({ countryCode: 'SWE', gold: 0, silver: 0, bronze: 0, total: 0 });
+            }
+
+            return { standings };
+        }
+
+        async function fetchIpcResults() {
+            const res = await fetchWithTimeout(`${IPC_BASE}/results/milano-cortina-2026`);
+            const data = await safeJson(res);
+            if (!data || !Array.isArray(data)) return null;
+
+            // Normalize
+            const latest = data.map(r => ({
+                id: r.id || `evt-${Math.random().toString(36).substr(2, 9)}`, // stable if provided
+                time: r.startTime || r.date || 'TBA',
+                sport: r.sport || 'Unknown',
+                status: r.status || 'SCHEDULED',
+                competitors: r.competitors || r.teams || []
+            }));
+
+            return { latest };
+        }
+
+        async function fetchIpcSweden(resultsPayload) {
+            if (!resultsPayload || !resultsPayload.latest) return null;
+
+            // Filter global results for Sweden
+            const sweEvents = resultsPayload.latest.filter(evt => {
+                return (evt.competitors && evt.competitors.some(c => c.country === 'SWE' || c.countryCode === 'SWE')) || evt.country === 'SWE';
+            });
+
+            return { events: sweEvents };
+        }
+
         async function fetchDataWithFallback(endpointPath) {
-            // TODO: Replace with actual fetch to IPC
             let ipcData = null;
 
-            // TODO: Replace with actual fetch to Olympics.com
-            let olympicsData = null;
+            if (endpointPath === '/api/medals') {
+                ipcData = await fetchIpcMedals();
+            } else if (endpointPath === '/api/results') {
+                ipcData = await fetchIpcResults();
+            } else if (endpointPath === '/api/sweden') {
+                // Fetch full results to build Sweden filter
+                const results = await fetchIpcResults();
+                if (results) ipcData = await fetchIpcSweden(results);
+            } else if (endpointPath === '/api/health') {
+                // Return test harness status
+                return {
+                    ...baseData,
+                    status: 'ok',
+                    endpoints: ['/api/medals', '/api/results', '/api/sweden'],
+                    source: 'system'
+                };
+            }
 
-            let staleCacheData = null; // In real implementation, this would read from KV or cache API if both fail
-
+            // Fallback chain priority: 1. IPC, 2. Mock (simulate Stale/Olympics for now as they are unset)
             if (ipcData) {
-                return { ...ipcData, source: 'ipc', error: false };
-            } else if (olympicsData) {
-                return { ...olympicsData, source: 'olympics', error: false };
-            } else if (staleCacheData) {
-                return { ...staleCacheData, source: 'stale_cache', error: true };
+                return { ...baseData, ...ipcData, source: 'ipc', error: false };
             } else {
-                // Return Mock data for now until real endpoints exist
-                return getMockData(endpointPath);
+                const mock = getMockData(endpointPath);
+                if (mock) {
+                    return { ...mock, source: 'mock', error: true };
+                }
+                return null;
             }
         }
 
