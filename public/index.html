@@ -1,15 +1,27 @@
 <!DOCTYPE html>
 <html lang="sv">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Parakollen 2026</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        const theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.dataset.theme = theme;
+    </script>
 </head>
+
 <body>
     <header class="topnav sticky">
-        <div class="logo">
-            <span style="color: var(--swe-yellow);">Para</span><span style="color: var(--swe-blue);">kollen</span>
+        <div class="logo flex justify-between items-center" style="padding-bottom: 0;">
+            <div><span style="color: var(--swe-yellow);">Para</span><span style="color: var(--swe-blue);">kollen</span>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Byt tema"
+                style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-primary);">
+                <span class="icon-dark">🌙</span>
+                <span class="icon-light" style="display:none;">☀️</span>
+            </button>
         </div>
         <nav id="main-nav">
             <a href="#today" data-view="today" class="active">Idag</a>
@@ -26,4 +38,5 @@
     </main>
     <script type="module" src="app.js"></script>
 </body>
+
 </html>

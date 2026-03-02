@@ -13,7 +13,8 @@ export default {
 
         const baseData = {
             lastUpdated: new Date().toISOString(),
-            stockholmDate: stockholmDate
+            stockholmDate: stockholmDate,
+            source: 'mock' // Will be 'ipc' or 'olympics' when real
         };
 
         // CORS headers for local dev testing
@@ -29,28 +30,55 @@ export default {
 
         let responseData = null;
 
-        if (path === '/api/today') {
-            responseData = {
-                ...baseData,
-                swedenMedals: 2,
-                swedenRank: 14,
-                nextSweStart: '14:30',
-                sweEvents: [{ id: 'e1', time: '14:30', sport: 'Para-Alpint', athletes: 'Ebba Årsjö' }],
-                highlights: [{ time: '18:00', event: 'Invigning', sport: 'Ceremoni' }]
-            };
-        } else if (path === '/api/schedule') {
-            responseData = { ...baseData, events: [] };
-        } else if (path === '/api/sweden') {
-            responseData = { ...baseData, events: [{ id: 'e1' }] };
-        } else if (path === '/api/medals') {
-            responseData = { ...baseData, standings: [] };
-        } else if (path === '/api/results') {
-            responseData = { ...baseData, latest: [] };
-        } else if (path === '/api/news') {
-            responseData = { ...baseData, articles: [] };
-        } else if (path === '/api/watch') {
-            responseData = { ...baseData, broadcasts: [] };
+        // Helper to simulate the fallback strategy
+        async function fetchDataWithFallback(endpointPath) {
+            // TODO: Replace with actual fetch to IPC
+            let ipcData = null;
+
+            // TODO: Replace with actual fetch to Olympics.com
+            let olympicsData = null;
+
+            let staleCacheData = null; // In real implementation, this would read from KV or cache API if both fail
+
+            if (ipcData) {
+                return { ...ipcData, source: 'ipc', error: false };
+            } else if (olympicsData) {
+                return { ...olympicsData, source: 'olympics', error: false };
+            } else if (staleCacheData) {
+                return { ...staleCacheData, source: 'stale_cache', error: true };
+            } else {
+                // Return Mock data for now until real endpoints exist
+                return getMockData(endpointPath);
+            }
         }
+
+        function getMockData(endpointPath) {
+            if (endpointPath === '/api/today') {
+                return {
+                    ...baseData,
+                    swedenMedals: 2,
+                    swedenRank: 14,
+                    nextSweStart: '14:30',
+                    sweEvents: [{ id: 'e1', time: '14:30', sport: 'Para-Alpint', athletes: 'Ebba Årsjö' }],
+                    highlights: [{ time: '18:00', event: 'Invigning', sport: 'Ceremoni' }]
+                };
+            } else if (endpointPath === '/api/schedule') {
+                return { ...baseData, events: [] };
+            } else if (endpointPath === '/api/sweden') {
+                return { ...baseData, events: [{ id: 'e1' }] };
+            } else if (endpointPath === '/api/medals') {
+                return { ...baseData, standings: [] };
+            } else if (endpointPath === '/api/results') {
+                return { ...baseData, latest: [] };
+            } else if (endpointPath === '/api/news') {
+                return { ...baseData, articles: [] };
+            } else if (endpointPath === '/api/watch') {
+                return { ...baseData, broadcasts: [] };
+            }
+            return null;
+        }
+
+        responseData = await fetchDataWithFallback(path);
 
         if (responseData) {
             return new Response(JSON.stringify(responseData), {

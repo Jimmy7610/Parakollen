@@ -139,6 +139,22 @@ async function renderView(viewName, forceRefresh = false) {
     }
 }
 
+function initThemeToggle() {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+
+    // Set initial aria state
+    const currentTheme = document.documentElement.dataset.theme;
+    btn.setAttribute('aria-pressed', currentTheme === 'light' ? 'true' : 'false');
+
+    btn.addEventListener('click', () => {
+        const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('theme', theme);
+        btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+    });
+}
+
 function initRouter() {
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '');
@@ -156,5 +172,6 @@ document.addEventListener('visibilitychange', handleTabFocus);
 window.addEventListener('focus', handleTabFocus);
 
 document.addEventListener('DOMContentLoaded', () => {
+    initThemeToggle();
     initRouter();
 });
