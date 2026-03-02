@@ -4,8 +4,7 @@ export async function renderSchedule(container) {
     const data = await fetchApi('/schedule');
 
     if (!data) {
-        container.innerHTML = `<div class="card"><p class="text-muted">Kunde inte ladda tablån.</p></div>`;
-        return;
+        throw new Error("Kunde inte ladda tablån.");
     }
 
     container.innerHTML = `

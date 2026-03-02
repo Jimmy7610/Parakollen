@@ -104,15 +104,28 @@ function handleTabFocus() {
 
 function getEndpointForView(view) {
     const endpoints = {
-        'today': '/api/today',
-        'schedule': '/api/schedule',
-        'sweden': '/api/sweden',
-        'medals': '/api/medals',
-        'results': '/api/results',
-        'news': '/api/news',
-        'watch': '/api/watch'
+        'today': '/today',
+        'schedule': '/schedule',
+        'sweden': '/sweden',
+        'medals': '/medals',
+        'results': '/results',
+        'news': '/news',
+        'watch': '/watch'
     };
     return endpoints[view];
+}
+
+export function renderErrorCard(container, message) {
+    container.innerHTML = `
+        <div class="card" style="border-left: 4px solid var(--accent-red);">
+            <h2 style="color: var(--accent-red); margin-bottom: 0.5rem;">Kunde inte hämta data</h2>
+            <p class="text-muted" style="margin-bottom: 1rem;">${message}</p>
+            <div class="flex gap-2">
+                <button onclick="window.location.reload()" class="bg-swe-blue" style="padding: 0.5rem 1rem; border: none; border-radius: var(--radius-md); cursor: pointer;">Försök igen</button>
+                <button onclick="window.open('Docs/DEV.md')" style="padding: 0.5rem 1rem; border: 1px solid var(--border-color); background: transparent; border-radius: var(--radius-md); color: var(--text-primary); cursor: pointer;">Öppna DEV.md</button>
+            </div>
+        </div>
+    `;
 }
 
 async function renderView(viewName, forceRefresh = false) {
@@ -123,17 +136,35 @@ async function renderView(viewName, forceRefresh = false) {
         a.classList.toggle('active', a.dataset.view === viewName);
     });
 
-    const container = document.getElementById('app-container');
+    const container = document.getElementById('viewRoot');
+    if (!container) return;
+
+    // Guard against file:// 
+    if (window.location.protocol === 'file:') {
+        container.innerHTML = `
+            <div class="card" style="border-left: 4px solid var(--swe-yellow);">
+                <h2 style="margin-bottom: 0.5rem;">Du öppnar via fil.</h2>
+                <p class="text-muted">Starta en lokal server för att se data (se Docs/DEV.md).</p>
+            </div>
+        `;
+        return;
+    }
 
     if (forceRefresh) {
         const ep = getEndpointForView(viewName);
-        if (ep) delete state.cache[ep];
+        if (ep) delete state.cache[`${API_BASE}${ep}`];
     }
 
     if (views[viewName]) {
-        container.innerHTML = `<div class="skeleton-box" style="height: 400px;"></div>`;
+        container.innerHTML = `<div class="skeleton-box" style="height: 400px; margin-bottom: 1rem;"></div><div class="skeleton-text" style="width: 80%"></div><div class="skeleton-text short"></div>`;
         window.scrollTo(0, 0);
-        await views[viewName](container);
+
+        try {
+            await views[viewName](container);
+        } catch (error) {
+            console.error(`Error rendering view ${viewName}:`, error);
+            renderErrorCard(container, error.message || "API unreachable");
+        }
     } else {
         container.innerHTML = `<div class="card"><h2>404</h2><p>Vy hittades inte (${viewName}).</p></div>`;
     }

@@ -4,8 +4,7 @@ export async function renderResults(container) {
     const data = await fetchApi('/results');
 
     if (!data) {
-        container.innerHTML = `<div class="card"><p class="text-muted">Kunde inte ladda resultat.</p></div>`;
-        return;
+        throw new Error("Kunde inte ladda resultat.");
     }
 
     container.innerHTML = `

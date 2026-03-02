@@ -4,8 +4,7 @@ export async function renderNews(container) {
     const data = await fetchApi('/news');
 
     if (!data) {
-        container.innerHTML = `<div class="card"><p class="text-muted">Kunde inte ladda nyheter.</p></div>`;
-        return;
+        throw new Error("Kunde inte ladda nyheter.");
     }
 
     container.innerHTML = `

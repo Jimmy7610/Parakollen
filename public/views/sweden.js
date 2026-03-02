@@ -17,8 +17,7 @@ export async function renderSweden(container) {
     const data = await fetchApi('/sweden');
 
     if (!data) {
-        container.innerHTML = `<div class="card"><p class="text-muted">Kunde inte ladda svensk data.</p></div>`;
-        return;
+        throw new Error("Kunde inte ladda svensk data.");
     }
 
     // Silent pruning logic

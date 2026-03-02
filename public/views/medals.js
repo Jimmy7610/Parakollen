@@ -4,14 +4,13 @@ export async function renderMedals(container) {
     const data = await fetchApi('/medals');
 
     if (!data) {
-        container.innerHTML = `<div class="card"><p class="text-muted">Kunde inte ladda medaljligan.</p></div>`;
-        return;
+        throw new Error("Kunde inte ladda medaljligan.");
     }
 
     container.innerHTML = `
         <h1 class="card-title">Medaljligan</h1>
         <div class="card">
-            <p><strong>Under uppbyggnad.</strong> Här visas medaljtabellen, Sverige pinnas längst upp.</p>
+            ${data.standings?.length === 0 ? '<p class="text-muted" style="text-align: center; padding: 2rem 0;">Inga medaljer ännu.</p>' : '<p><strong>Under uppbyggnad.</strong> Här visas medaljtabellen, Sverige pinnas längst upp.</p>'}
         </div>
     `;
 }

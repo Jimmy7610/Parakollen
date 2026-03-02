@@ -4,8 +4,7 @@ export async function renderWatch(container) {
     const data = await fetchApi('/watch');
 
     if (!data) {
-        container.innerHTML = `<div class="card"><p class="text-muted">Kunde inte ladda TV-tablå.</p></div>`;
-        return;
+        throw new Error("Kunde inte ladda TV-tablå.");
     }
 
     container.innerHTML = `

@@ -125,10 +125,14 @@ body {
   border-bottom-color: var(--swe-blue);
 }
 
-main {
-  max-width: 600px;
+main.app {
+  width: 100%;
+}
+
+.container {
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  padding: 16px;
 }
 
 /* Cards */
