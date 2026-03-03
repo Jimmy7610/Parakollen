@@ -1,0 +1,72 @@
+[
+  {
+    "eventId": "pdf-Para-Alpint-2026-03-06T09-30-00-01-00",
+    "rawStart": "2026-03-06T09:30:00+01:00",
+    "startTime": "2026-03-06T09:30:00+01:00",
+    "stockholmTimeLabel": "09:30",
+    "endTime": null,
+    "sport": "Para-Alpint",
+    "classification": null,
+    "venue": null,
+    "status": "upcoming",
+    "isFinal": true,
+    "countries": [],
+    "title": "Men's Downhill (LW2)"
+  },
+  {
+    "eventId": "pdf-Rullstols-curling-2026-03-06T14-30-00-01-00",
+    "rawStart": "2026-03-06T14:30:00+01:00",
+    "startTime": "2026-03-06T14:30:00+01:00",
+    "stockholmTimeLabel": "14:30",
+    "endTime": null,
+    "sport": "Rullstols-curling",
+    "classification": null,
+    "venue": null,
+    "status": "upcoming",
+    "isFinal": false,
+    "countries": [],
+    "title": "Wheelchair Curling — Round Robin"
+  },
+  {
+    "eventId": "pdf-Ceremoni-2026-03-06T18-00-00-01-00",
+    "rawStart": "2026-03-06T18:00:00+01:00",
+    "startTime": "2026-03-06T18:00:00+01:00",
+    "stockholmTimeLabel": "18:00",
+    "endTime": null,
+    "sport": "Ceremoni",
+    "classification": null,
+    "venue": null,
+    "status": "upcoming",
+    "isFinal": false,
+    "countries": [],
+    "title": "Invigning"
+  },
+  {
+    "eventId": "pdf-Para-Ishockey-2026-03-07T10-00-00-01-00",
+    "rawStart": "2026-03-07T10:00:00+01:00",
+    "startTime": "2026-03-07T10:00:00+01:00",
+    "stockholmTimeLabel": "10:00",
+    "endTime": null,
+    "sport": "Para-Ishockey",
+    "classification": null,
+    "venue": null,
+    "status": "upcoming",
+    "isFinal": false,
+    "countries": [],
+    "title": "Para Ice Hockey — Preliminary"
+  },
+  {
+    "eventId": "pdf-Para-Skidskytte-2026-03-07T14-00-00-01-00",
+    "rawStart": "2026-03-07T14:00:00+01:00",
+    "startTime": "2026-03-07T14:00:00+01:00",
+    "stockholmTimeLabel": "14:00",
+    "endTime": null,
+    "sport": "Para-Skidskytte",
+    "classification": null,
+    "venue": null,
+    "status": "upcoming",
+    "isFinal": true,
+    "countries": [],
+    "title": "Women's Sprint"
+  }
+]

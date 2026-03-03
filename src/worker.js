@@ -1,3 +1,5 @@
+import schedulePdfJson from './data/schedule_pdf.json';
+
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -154,65 +156,17 @@ export default {
             return { schedule: events };
         }
 
-        // --- PDF Fallback Pipeline ---
-        const PDF_URL = 'https://milanocortina2026.olympics.com/en/paralympic-games/schedule/pdf';
-
-        async function fetchSchedulePdf() {
-            // In a full implementation, we would fetch the ArrayBuffer from PDF_URL
-            // Since we use a heuristic approach to bypass compressed text stream limitations in Workers,
-            // we simulate a successful fetch that feeds into extractTextFromPdf.
-            return new ArrayBuffer(0);
-        }
-
-        async function extractTextFromPdf(arrayBuffer) {
-            // Heuristic PDF Text Extraction Pipeline.
-            // When running in a V8 isolate without decompression libraries (zlib/pako),
-            // extracting FlateDecode streams is fragile. We emulate the fallback text extraction
-            // returning a derived structured dataset from the official Version 9 PDF.
-            return [
-                { rawStart: '2026-03-06T09:30:00+01:00', sport: 'Para-Alpint', title: 'Men\'s Downhill (LW2)', isFinal: true },
-                { rawStart: '2026-03-06T14:30:00+01:00', sport: 'Rullstols-curling', title: 'Wheelchair Curling — Round Robin', isFinal: false },
-                { rawStart: '2026-03-06T18:00:00+01:00', sport: 'Ceremoni', title: 'Invigning', isFinal: false },
-                { rawStart: '2026-03-07T10:00:00+01:00', sport: 'Para-Ishockey', title: 'Para Ice Hockey — Preliminary', isFinal: false },
-                { rawStart: '2026-03-07T14:00:00+01:00', sport: 'Para-Skidskytte', title: 'Women\'s Sprint', isFinal: true }
-            ];
-        }
-
-        function normalizePdfScheduleToEvents(pdfData, dateFilter) {
-            const timeFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', minute: '2-digit' });
-            const events = [];
-
-            for (const item of pdfData) {
-                if (!item.rawStart.startsWith(dateFilter)) continue;
-
-                const startTimeIso = item.rawStart;
-                let stockholmTimeLabel = 'TBA';
-                try {
-                    stockholmTimeLabel = timeFormatter.format(new Date(startTimeIso));
-                } catch (e) { }
-
-                events.push({
-                    eventId: `pdf-${item.sport}-${item.rawStart}`.replace(/[^a-z0-9]/gi, '-'),
-                    rawStart: item.rawStart,
-                    startTime: startTimeIso,
-                    stockholmTimeLabel: stockholmTimeLabel,
-                    endTime: null,
-                    sport: item.sport,
-                    classification: null,
-                    venue: null,
-                    status: 'upcoming',
-                    isFinal: !!item.isFinal,
-                    countries: [], // PDF does not contain exhaustive country rosters
-                    title: item.title
-                });
-            }
-            return events;
-        }
+        // --- PDF Fallback Pipeline (Offline JSON Generated) ---
+        // Extracted previously using tools/build_schedule_from_pdf.mjs
 
         async function getPdfScheduleEvents(dateFilter) {
-            const buffer = await fetchSchedulePdf(); // Best effort fetch
-            const pdfData = await extractTextFromPdf(buffer); // Heuristic text extraction
-            return normalizePdfScheduleToEvents(pdfData, dateFilter);
+            const events = [];
+
+            for (const item of schedulePdfJson) {
+                if (!item.rawStart.startsWith(dateFilter)) continue;
+                events.push(item);
+            }
+            return events;
         }
         // ------------------------------
 
@@ -228,7 +182,7 @@ export default {
                 const pdfEvents = await getPdfScheduleEvents(dateFilter);
                 if (pdfEvents && pdfEvents.length > 0) {
                     rawEvents = pdfEvents;
-                    source = 'pdf';
+                    source = 'pdf-json';
                     isError = false;
                 } else {
                     source = 'unavailable';
@@ -342,48 +296,97 @@ export default {
         }
 
         function getMockData(endpointPath) {
-            if (endpointPath === '/api/today') {
-                return {
-                    ...baseData,
-                    swedenMedals: 0,
-                    swedenRank: '-',
-                    nextSweStart: null,
-                    sweEvents: [],
-                    highlights: [],
-                    source: isPreGamesMode ? 'pregames' : 'unavailable',
-                    error: true
-                };
-            } else if (endpointPath === '/api/schedule') {
-                return { ...baseData, events: [], source: isPreGamesMode ? 'pregames' : 'unavailable', error: true };
-            } else if (endpointPath === '/api/sweden') {
-                return { ...baseData, events: [], source: isPreGamesMode ? 'pregames' : 'unavailable', error: true };
-            } else if (endpointPath === '/api/medals') {
-                return {
-                    ...baseData,
-                    standings: [
-                        { countryCode: 'SWE', gold: 0, silver: 0, bronze: 0, total: 0, rank: '-' }
-                    ],
-                    source: isPreGamesMode ? 'pregames' : 'unavailable',
-                    error: true
-                };
-            } else if (endpointPath === '/api/results') {
-                return { ...baseData, latest: [], source: isPreGamesMode ? 'pregames' : 'unavailable', error: true };
-            } else if (endpointPath === '/api/news') {
-                return { ...baseData, articles: [] };
-            } else if (endpointPath === '/api/watch') {
-                return { ...baseData, broadcasts: [] };
-            }
+            // Unused intentionally pre-games since we use pregames source
             return null;
         }
 
-        responseData = await fetchDataWithFallback(path);
+        function decodeHtmlEntities(str) {
+            const entities = {
+                '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'",
+                '&aring;': 'å', '&auml;': 'ä', '&ouml;': 'ö',
+                '&Aring;': 'Å', '&Auml;': 'Ä', '&Ouml;': 'Ö'
+            };
+            return entities[str] || str;
+        }
+
+        async function fetchNews() {
+            // Using Google News RSS explicitly scoped to Paralympics to ensure a stable, rich news feed
+            const rssUrl = "https://news.google.com/rss/search?q=Paralympics+OR+%22Milano+Cortina%22&hl=sv&gl=SE&ceid=SE:sv";
+            try {
+                const res = await fetchWithTimeout(rssUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                if (!res.ok) throw new Error("RSS feed returned " + res.status);
+                const text = await res.text();
+
+                // Simple regex parser for RSS XML
+                const items = [];
+                const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+                let match;
+
+                while ((match = itemRegex.exec(text)) !== null && items.length < 15) {
+                    const itemXml = match[1];
+                    const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || itemXml.match(/<title>(.*?)<\/title>/);
+                    const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
+                    const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
+                    const sourceMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/);
+
+                    if (titleMatch && linkMatch) {
+                        let cleanTitle = titleMatch[1].replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+                        // Basic utf-8 / iso decoding heuristic for sv feeds
+                        cleanTitle = cleanTitle.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+                        cleanTitle = cleanTitle.replace(/&([a-z]+);/gi, match => decodeHtmlEntities(match));
+
+                        cleanTitle = cleanTitle.split(' - ')[0]; // Remove Google's appended source name
+
+                        items.push({
+                            title: cleanTitle.trim(),
+                            url: linkMatch[1],
+                            publishedAt: pubDateMatch ? pubDateMatch[1] : null,
+                            sourceName: sourceMatch ? sourceMatch[1] : 'Nyheter'
+                        });
+                    }
+                }
+
+                if (items.length > 0) {
+                    return { ...baseData, source: 'rss', articles: items, error: false };
+                }
+                return { ...baseData, source: 'unavailable', articles: [], error: true };
+            } catch (e) {
+                return { ...baseData, source: 'unavailable', articles: [], error: true };
+            }
+        }
+
+        if (path === '/api/today') {
+            responseData = await aggregateToday();
+        } else if (path === '/api/schedule') {
+            const dateFilter = url.searchParams.get('date') || stockholmDate;
+            const countryFilter = url.searchParams.get('country');
+            const finalsFilter = url.searchParams.get('finals');
+            const res = await fetchNormalizedSchedule(dateFilter, countryFilter, finalsFilter);
+            responseData = { ...baseData, events: res.schedule, source: res.source, error: res.error };
+        } else if (path === '/api/sweden') {
+            responseData = await aggregateSweden();
+        } else if (path === '/api/sweden_ipc') {
+            const resultsPayload = await fetchIpcResults();
+            const res = await fetchIpcSweden(resultsPayload);
+            responseData = res || { events: [] };
+        } else if (path === '/api/news') {
+            responseData = await fetchNews();
+        } else {
+            responseData = await fetchDataWithFallback(path);
+        }
 
         if (responseData) {
-            const isPdf = responseData.source === 'pdf';
-            const cacheAge = isPdf ? 86400 : 300;
+            const isPdf = responseData.source === 'pdf-json';
+            const isRss = responseData.source === 'rss';
+
+            let cacheAge = 300;
+            if (isPdf) cacheAge = 86400; // 24h
+            if (isRss) cacheAge = 3600;  // 1h
+
             return new Response(JSON.stringify(responseData), {
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/json; charset=utf-8",
                     "Cache-Control": `public, max-age=${cacheAge}, stale-while-revalidate=60`,
                     ...corsHeaders
                 }
@@ -393,7 +396,7 @@ export default {
         return new Response(JSON.stringify({ error: "Not found" }), {
             status: 404,
             headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "application/json; charset=utf-8",
                 ...corsHeaders
             }
         });
