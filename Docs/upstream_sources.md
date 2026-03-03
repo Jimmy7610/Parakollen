@@ -38,3 +38,26 @@ Because these APIs are highly dynamic and only become fully stable as the Games 
 2. **Olympics.com:** Secondary fallback if IPC fails.
 3. **Stale Cache:** Returned if both sources fail (with `error: true` flag).
 4. **Mock Data:** Returned if no cache exists during deep development.
+
+---
+
+# Upstream API Sources: Olympics.com (Schedule)
+
+Olympics.com serves as the primary fallback for scheduling before the Games launch (and sometimes during). As of 2024-2026, their endpoints are heavily protected by Akamai bot shielding (HTTP2 Protocol exceptions for headless scrapers).
+
+## Inferred Endpoints (Based on Historical Paris 2024 Patterns)
+
+### 1. Daily Schedule Listing
+- **URL Path:** `https://sph-s-api.olympics.com/winter/schedules/api/ENG/schedule/day/{YYYY-MM-DD}` (e.g., `2026-03-06`)
+- **Method:** `GET`
+- **Headers:** Generally requires standard Browser User-Agents.
+- **Purpose:** Retrieves the complete daily schedule spanning all sports and disciplines.
+- **Sample Response Fields (Normalized by Worker):**
+  - `eventId`: Stable unique identifier
+  - `startTime` / `endTime`: UTC ISO strings
+  - `sport`: Name of the sport
+  - `status`: "upcoming", "live", "finished"
+  - `isFinal`: Boolean indicating medal events
+  - `countries`: Array of ISO country codes involved
+
+**Note on Stability:** As Cloudflare Workers share IPs, fetching Olympics.com directly might yield `403 Forbidden` if Akamai blocks the datacenter. The Worker gracefully handles this by parsing the errors and routing cleanly to the mock/stale fallback chains.
