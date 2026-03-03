@@ -17,7 +17,7 @@ export async function renderNews(container) {
                 <a href="${a.url || '#'}" target="_blank" rel="noopener noreferrer" class="card" style="display: block; text-decoration: none; padding: 16px; margin-bottom: 8px; color: inherit;">
                     <h3 style="margin-bottom: 8px; font-size: 1.1rem; color: var(--swe-blue);">${a.title || 'Nyhet'}</h3>
                     <div class="flex justify-between items-center text-sm text-muted">
-                        <span>${a.source || 'Källa'}</span>
+                        <span>${a.sourceName || 'Nyheter'}</span>
                         <span>${a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</span>
                     </div>
                 </a>
