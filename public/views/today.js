@@ -1,4 +1,5 @@
 import { fetchApi } from '../app.js';
+import { GAMES_START } from '../lib/constants.js';
 
 export async function renderToday(container) {
     const data = await fetchApi('/today');
@@ -40,7 +41,7 @@ export async function renderToday(container) {
             `).join('') : '<p class="text-muted">Inga svenska starter idag.</p>'}
         </div>
 
-        <h2 class="card-title" style="margin-top: 2rem; margin-bottom: 1rem;">Dagens program</h2>
+        <h2 class="card-title" style="margin-top: 2rem; margin-bottom: 1rem;">${data.preGames ? `Kommande program (${GAMES_START})` : 'Dagens program'}</h2>
         <div class="card">
             ${data.highlights?.length ? data.highlights.map(e => `
                 <div class="mb-2 pb-2" style="border-bottom: 1px solid var(--border-color);"><strong>${e.time}</strong> - ${e.event} <span class="text-muted">(${e.sport})</span></div>

@@ -1,10 +1,12 @@
 import { fetchApi } from '../app.js';
+import { GAMES_START } from '../lib/constants.js';
 
 let currentDate = null;
 
 export async function renderSchedule(container) {
     if (!currentDate) {
-        currentDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const todayStockholm = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        currentDate = todayStockholm < GAMES_START ? GAMES_START : todayStockholm;
     }
 
     const data = await fetchApi(`/schedule?date=${currentDate}`);
@@ -22,6 +24,9 @@ export async function renderSchedule(container) {
                 <button id="nextDayBtn" class="badge" style="cursor: pointer; padding: 6px 12px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-primary);">Nästa &raquo;</button>
             </div>
         </div>
+        ${data.preGames && currentDate !== GAMES_START ?
+            `<button id="jumpStartBtn" class="badge" style="width:100%; text-align:center; padding: 12px; margin-bottom: 1rem; border: 1px solid var(--swe-blue); background: var(--surface-color); color: var(--swe-blue); cursor: pointer; font-weight: bold;">Hoppa till första tävlingsdagen (${GAMES_START}) &raquo;</button>`
+            : ''}
     `;
 
     if (data.preGames) {
@@ -63,6 +68,13 @@ export async function renderSchedule(container) {
     container.innerHTML = html;
 
     setTimeout(() => {
+        document.getElementById('jumpStartBtn')?.addEventListener('click', () => {
+            currentDate = GAMES_START;
+            renderSchedule(container).catch(e => {
+                container.innerHTML = `<div class="card" style="border-color: var(--accent-red);"><p>Kunde inte hämta valt datum. <button onclick="location.reload()" class="bg-swe-blue badge" style="border:none; color:white; padding:8px 16px; cursor:pointer;">Ladda om</button></p></div>`;
+            });
+        });
+
         document.getElementById('prevDayBtn')?.addEventListener('click', () => {
             const d = new Date(`${currentDate}T12:00:00Z`);
             d.setDate(d.getDate() - 1);
