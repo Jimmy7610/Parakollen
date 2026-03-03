@@ -9,6 +9,10 @@ export async function renderMedals(container) {
 
     let html = `<h1 class="card-title">Medaljligan</h1>`;
 
+    if (data.preGames) {
+        html += `<div class="card bg-swe-blue" style="color: white; border-left: 4px solid var(--swe-yellow); margin-bottom: 1rem;"><p class="text-sm">Spelen har inte startat ännu — medaljer och resultat är 0.</p></div>`;
+    }
+
     if (!data.standings || data.standings.length === 0) {
         html += `<div class="card"><p class="text-muted" style="text-align: center; padding: 3rem 0;">Inga medaljer ännu.</p></div>`;
     } else {

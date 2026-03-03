@@ -67,8 +67,17 @@ export async function renderSweden(container) {
         }).join('');
     }
 
+    let infoHtml = '';
+    if (data.preGames) {
+        infoHtml = `<div class="card bg-swe-blue" style="color: white; border-left: 4px solid var(--swe-yellow); margin-bottom: 1rem;"><p class="text-sm">Spelen har inte startat ännu — schema och resultat kan vara begränsade.</p></div>`;
+    } else if (data.source === 'unavailable' || data.source === 'mock') {
+        infoHtml = `<div class="card" style="border-left: 4px solid var(--accent-red); margin-bottom: 1rem;"><p class="text-sm">Schema ej tillgängligt just nu (källan blockerar automatiska hämtningar).</p></div>`;
+    }
+
     container.innerHTML = `
         <h1 class="card-title text-swe-blue">Sverige</h1>
+        
+        ${infoHtml}
         
         <div class="flex justify-between items-center mt-4 mb-2">
             <h2 class="card-title" style="margin: 0;">Svenska Tävlingar (${data.events?.length || 0})</h2>

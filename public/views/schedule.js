@@ -24,8 +24,14 @@ export async function renderSchedule(container) {
         </div>
     `;
 
+    if (data.preGames) {
+        html += `<div class="card bg-swe-blue" style="color: white; border-left: 4px solid var(--swe-yellow);"><p class="text-sm">Spelen har inte startat ännu — schema och resultat kan vara begränsade.</p></div>`;
+    } else if (data.source === 'unavailable' || data.source === 'mock') {
+        html += `<div class="card" style="border-left: 4px solid var(--accent-red);"><p class="text-sm">Schema ej tillgängligt just nu (källan blockerar automatiska hämtningar).</p></div>`;
+    }
+
     if (!data.events || data.events.length === 0) {
-        html += `<div class="card"><p class="text-muted" style="text-align: center; padding: 3rem 0;">Inget schema ännu.</p></div>`;
+        html += `<div class="card"><p class="text-muted" style="text-align: center; padding: 3rem 0;">Inget schema tillgängligt just nu.</p></div>`;
     } else {
         html += `<div class="flex flex-col gap-2">
             ${data.events.map(event => {

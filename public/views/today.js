@@ -7,7 +7,15 @@ export async function renderToday(container) {
         throw new Error("Kunde inte ladda data för Idag-vyn.");
     }
 
+    let infoHtml = '';
+    if (data.preGames) {
+        infoHtml = `<div class="card bg-swe-blue" style="color: white; border-left: 4px solid var(--swe-yellow); margin-bottom: 1rem;"><p class="text-sm">Spelen har inte startat ännu — medaljer och resultat är 0.</p></div>`;
+    } else if (data.source === 'unavailable' || data.source === 'mock') {
+        infoHtml = `<div class="card" style="border-left: 4px solid var(--accent-red); margin-bottom: 1rem;"><p class="text-sm">Schema ej tillgängligt just nu (källan blockerar automatiska hämtningar).</p></div>`;
+    }
+
     container.innerHTML = `
+        ${infoHtml}
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
             <div class="card" style="text-align: center; padding: 2rem 1rem; margin-bottom: 0;">
                 <div class="text-sm text-muted mb-2">Milano Cortina 2026</div>

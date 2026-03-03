@@ -9,6 +9,12 @@ export async function renderResults(container) {
 
     let html = `<h1 class="card-title">Senaste Resultat</h1>`;
 
+    if (data.preGames) {
+        html += `<div class="card bg-swe-blue" style="color: white; border-left: 4px solid var(--swe-yellow); margin-bottom: 1rem;"><p class="text-sm">Spelen har inte startat ännu — medaljer och resultat är 0.</p></div>`;
+    } else if (data.source === 'unavailable' || data.source === 'mock') {
+        html += `<div class="card" style="border-left: 4px solid var(--accent-red); margin-bottom: 1rem;"><p class="text-sm">Schema ej tillgängligt just nu (källan blockerar automatiska hämtningar).</p></div>`;
+    }
+
     if (!data.latest || data.latest.length === 0) {
         html += `<div class="card"><p class="text-muted" style="text-align: center; padding: 3rem 0;">Inga resultat ännu.</p></div>`;
     } else {
