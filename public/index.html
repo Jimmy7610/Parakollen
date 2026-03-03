@@ -13,25 +13,26 @@
 </head>
 
 <body>
-    <header class="topnav sticky">
-        <div class="logo flex justify-between items-center" style="padding-bottom: 0;">
-            <div><span style="color: var(--swe-yellow);">Para</span><span style="color: var(--swe-blue);">kollen</span>
-            </div>
+    <header class="topbar sticky">
+        <div class="container topbar__inner">
+            <a class="brand" href="#today">
+                <span style="color: var(--swe-yellow);">Para</span><span style="color: var(--swe-blue);">kollen</span>
+            </a>
+            <nav id="main-nav" class="nav">
+                <a href="#today" data-view="today" class="active">Idag</a>
+                <a href="#schedule" data-view="schedule">Tablå</a>
+                <a href="#sweden" data-view="sweden">Sverige</a>
+                <a href="#medals" data-view="medals">Medaljer</a>
+                <a href="#results" data-view="results">Resultat</a>
+                <a href="#news" data-view="news">Nyheter</a>
+                <a href="#watch" data-view="watch">TV/Play</a>
+            </nav>
             <button id="theme-toggle" class="theme-btn" aria-label="Byt tema"
                 style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-primary);">
                 <span class="icon-dark">🌙</span>
                 <span class="icon-light" style="display:none;">☀️</span>
             </button>
         </div>
-        <nav id="main-nav">
-            <a href="#today" data-view="today" class="active">Idag</a>
-            <a href="#schedule" data-view="schedule">Tablå</a>
-            <a href="#sweden" data-view="sweden">Sverige</a>
-            <a href="#medals" data-view="medals">Medaljer</a>
-            <a href="#results" data-view="results">Resultat</a>
-            <a href="#news" data-view="news">Nyheter</a>
-            <a href="#watch" data-view="watch">TV/Play</a>
-        </nav>
     </header>
     <main id="app" class="app">
         <div class="container" id="viewRoot">
