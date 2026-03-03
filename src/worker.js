@@ -3,6 +3,9 @@ export default {
         const url = new URL(request.url);
         const path = url.pathname;
 
+        const GAMES_START = "2026-03-06";
+        const GAMES_END = "2026-03-15";
+
         // Auto-generate Stockholm date
         const stockholmDate = new Intl.DateTimeFormat('sv-SE', {
             timeZone: 'Europe/Stockholm',
@@ -11,10 +14,13 @@ export default {
             day: '2-digit'
         }).format(new Date());
 
+        const isPreGamesMode = stockholmDate < GAMES_START;
+
         const baseData = {
             lastUpdated: new Date().toISOString(),
             stockholmDate: stockholmDate,
-            source: 'mock' // Will be 'ipc' or 'olympics' when real
+            source: 'mock',
+            preGames: isPreGamesMode
         };
 
         // CORS headers for local dev testing
@@ -113,18 +119,38 @@ export default {
             const data = await safeJson(res);
             if (!data || !data.units) return null;
 
-            const events = data.units.map(u => ({
-                eventId: u.id || `oly-${Math.random().toString(36).substr(2, 9)}`,
-                startTime: u.startDate || null,
-                endTime: u.endDate || null,
-                sport: u.disciplineName || 'Unknown',
-                classification: u.eventUnitName || null,
-                venue: u.venueName || null,
-                status: u.status || 'upcoming',
-                isFinal: !!u.medal,
-                countries: u.competitors?.map(c => c.noc) || [],
-                title: `${u.disciplineName || ''} — ${u.eventUnitName || ''}`
-            }));
+            const timeFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm', hour: '2-digit', minute: '2-digit' });
+
+            const events = data.units.map(u => {
+                let startTimeIso = u.startDate || null;
+                let stockholmTimeLabel = 'TBA';
+
+                if (startTimeIso) {
+                    // Check if it's already an ISO string with Z or offset
+                    if (!startTimeIso.includes('Z') && !startTimeIso.match(/[+-]\d{2}:\d{2}$/)) {
+                        // Assuming local time (CET/CEST) if no timezone provided
+                        startTimeIso = startTimeIso + '+01:00'; // Simplification for March in Italy
+                    }
+                    try {
+                        stockholmTimeLabel = timeFormatter.format(new Date(startTimeIso));
+                    } catch (e) { }
+                }
+
+                return {
+                    eventId: u.id || `oly-${Math.random().toString(36).substr(2, 9)}`,
+                    rawStart: u.startDate || null,
+                    startTime: startTimeIso,
+                    stockholmTimeLabel: stockholmTimeLabel,
+                    endTime: u.endDate || null,
+                    sport: u.disciplineName || 'Unknown',
+                    classification: u.eventUnitName || null,
+                    venue: u.venueName || null,
+                    status: u.status || 'upcoming',
+                    isFinal: !!u.medal,
+                    countries: u.competitors?.map(c => c.noc) || [],
+                    title: `${u.disciplineName || ''} — ${u.eventUnitName || ''}`
+                };
+            });
             return { schedule: events };
         }
 
@@ -137,10 +163,9 @@ export default {
             if (oly && oly.schedule) {
                 rawEvents = oly.schedule;
             } else {
-                const mock = getMockData('/api/schedule');
-                rawEvents = mock.events || [];
-                source = 'mock';
+                source = 'unavailable';
                 isError = true;
+                rawEvents = []; // Never return fake schedule rows intentionally
             }
 
             if (countryFilter) {
@@ -248,34 +273,32 @@ export default {
         }
 
         function getMockData(endpointPath) {
-            const mockEvents = [
-                { eventId: 'oly-mock-1', startTime: new Date(Date.now() + 3600000).toISOString(), sport: 'Para-Alpint', isFinal: true, countries: ['SWE', 'NOR'], title: 'Men\'s Downhill (LW2)' },
-                { eventId: 'oly-mock-2', startTime: new Date(Date.now() + 7200000).toISOString(), sport: 'Rullstols-curling', isFinal: false, countries: ['SWE', 'CAN'], title: 'Wheelchair Curling — Round Robin' },
-                { eventId: 'oly-mock-3', startTime: new Date(Date.now() + 10800000).toISOString(), sport: 'Para-Ishockey', isFinal: false, countries: ['USA', 'CHN'], title: 'Para Ice Hockey — Preliminary' }
-            ];
-
             if (endpointPath === '/api/today') {
                 return {
                     ...baseData,
-                    swedenMedals: 2,
-                    swedenRank: 15,
-                    nextSweStart: '14:30',
-                    sweEvents: [{ id: 'oly-mock-1', time: '14:30', sport: 'Para-Alpint', athletes: 'Men\'s Downhill (LW2)' }],
-                    highlights: [{ time: '18:00', event: 'Invigning', sport: 'Ceremoni' }]
+                    swedenMedals: 0,
+                    swedenRank: '-',
+                    nextSweStart: null,
+                    sweEvents: [],
+                    highlights: [],
+                    source: isPreGamesMode ? 'pregames' : 'unavailable',
+                    error: true
                 };
             } else if (endpointPath === '/api/schedule') {
-                return { ...baseData, events: mockEvents };
+                return { ...baseData, events: [], source: isPreGamesMode ? 'pregames' : 'unavailable', error: true };
             } else if (endpointPath === '/api/sweden') {
-                return { ...baseData, events: mockEvents.filter(e => e.countries.includes('SWE')) };
+                return { ...baseData, events: [], source: isPreGamesMode ? 'pregames' : 'unavailable', error: true };
             } else if (endpointPath === '/api/medals') {
                 return {
-                    ...baseData, standings: [
-                        { countryCode: 'CHN', gold: 10, silver: 5, bronze: 3, total: 18, rank: 1 },
-                        { countryCode: 'SWE', gold: 2, silver: 1, bronze: 0, total: 3, rank: 15 }
-                    ]
+                    ...baseData,
+                    standings: [
+                        { countryCode: 'SWE', gold: 0, silver: 0, bronze: 0, total: 0, rank: '-' }
+                    ],
+                    source: isPreGamesMode ? 'pregames' : 'unavailable',
+                    error: true
                 };
             } else if (endpointPath === '/api/results') {
-                return { ...baseData, latest: mockEvents };
+                return { ...baseData, latest: [], source: isPreGamesMode ? 'pregames' : 'unavailable', error: true };
             } else if (endpointPath === '/api/news') {
                 return { ...baseData, articles: [] };
             } else if (endpointPath === '/api/watch') {
