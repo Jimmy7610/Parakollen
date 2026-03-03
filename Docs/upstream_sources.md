@@ -61,3 +61,21 @@ Olympics.com serves as the primary fallback for scheduling before the Games laun
   - `countries`: Array of ISO country codes involved
 
 **Note on Stability:** As Cloudflare Workers share IPs, fetching Olympics.com directly might yield `403 Forbidden` if Akamai blocks the datacenter. The Worker gracefully handles this by parsing the errors and routing cleanly to the mock/stale fallback chains.
+
+---
+
+# Upstream API Sources: Official Schedule PDF (Fallback)
+
+When the highly dynamic Olympics.com JSON schedule API is blocked by Akamai, we fall back to parsing the static Official Competition Schedule PDF as a reliable source of truth for event times pre-games.
+
+## Source Details
+- **URL Path:** `https://milanocortina2026.olympics.com/en/paralympic-games/schedule/pdf` (or corresponding official CDN link).
+- **Purpose:** Provide a stable fallback for daily schedules to prevent fake/mock times from being presented to the user.
+
+## Parsing Strategy
+- Because Cloudflare Workers cannot natively run complex PDF decompression libraries (like `pdf.js`), the Worker utilizes a `extractTextFromPdf()` heuristical approach on uncompressed streams or falls back to a derived static dataset generated periodically from the master PDF.
+- **Limitations:** The PDF strictly details event classifications, start times, and sports, but *does not* include final athlete or active country rosters. Therefore, `countries` is always an empty array `[]`.
+- **UI Implication:** Without `SWE` country flags in this fallback payload, the `Idag` view will simply omit the "Nästa svensk" badge instead of guessing.
+
+## Caching Choice
+- Results derived from the PDF are cached heavily (`Cache-Control: max-age=86400`, 24 hours), since pre-games PDF schedules rarely mutate and do not provide live up-to-the-minute data.
