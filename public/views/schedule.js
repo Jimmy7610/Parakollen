@@ -28,6 +28,8 @@ export async function renderSchedule(container) {
         html += `<div class="card bg-swe-blue" style="color: white; border-left: 4px solid var(--swe-yellow);"><p class="text-sm">Spelen har inte startat ännu — schema och resultat kan vara begränsade.</p></div>`;
     } else if (data.source === 'unavailable' || data.source === 'mock') {
         html += `<div class="card" style="border-left: 4px solid var(--accent-red);"><p class="text-sm">Schema ej tillgängligt just nu (källan blockerar automatiska hämtningar).</p></div>`;
+    } else if (data.source === 'pdf') {
+        html += `<div class="card" style="border-left: 4px solid var(--swe-yellow);"><p class="text-sm">Källa: Officiell PDF Tablå (inga nationer tillgängliga).</p></div>`;
     }
 
     if (!data.events || data.events.length === 0) {
