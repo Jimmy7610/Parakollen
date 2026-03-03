@@ -66,21 +66,100 @@ var import_checked_fetch5 = __toESM(require_checked_fetch());
 
 // src/worker.js
 var import_checked_fetch2 = __toESM(require_checked_fetch());
+
+// src/data/schedule_pdf.json
+var schedule_pdf_default = [
+  {
+    eventId: "pdf-Para-Alpint-2026-03-06T09-30-00-01-00",
+    rawStart: "2026-03-06T09:30:00+01:00",
+    startTime: "2026-03-06T09:30:00+01:00",
+    stockholmTimeLabel: "09:30",
+    endTime: null,
+    sport: "Para-Alpint",
+    classification: null,
+    venue: null,
+    status: "upcoming",
+    isFinal: true,
+    countries: [],
+    title: "Men's Downhill (LW2)"
+  },
+  {
+    eventId: "pdf-Rullstols-curling-2026-03-06T14-30-00-01-00",
+    rawStart: "2026-03-06T14:30:00+01:00",
+    startTime: "2026-03-06T14:30:00+01:00",
+    stockholmTimeLabel: "14:30",
+    endTime: null,
+    sport: "Rullstols-curling",
+    classification: null,
+    venue: null,
+    status: "upcoming",
+    isFinal: false,
+    countries: [],
+    title: "Wheelchair Curling \u2014 Round Robin"
+  },
+  {
+    eventId: "pdf-Ceremoni-2026-03-06T18-00-00-01-00",
+    rawStart: "2026-03-06T18:00:00+01:00",
+    startTime: "2026-03-06T18:00:00+01:00",
+    stockholmTimeLabel: "18:00",
+    endTime: null,
+    sport: "Ceremoni",
+    classification: null,
+    venue: null,
+    status: "upcoming",
+    isFinal: false,
+    countries: [],
+    title: "Invigning"
+  },
+  {
+    eventId: "pdf-Para-Ishockey-2026-03-07T10-00-00-01-00",
+    rawStart: "2026-03-07T10:00:00+01:00",
+    startTime: "2026-03-07T10:00:00+01:00",
+    stockholmTimeLabel: "10:00",
+    endTime: null,
+    sport: "Para-Ishockey",
+    classification: null,
+    venue: null,
+    status: "upcoming",
+    isFinal: false,
+    countries: [],
+    title: "Para Ice Hockey \u2014 Preliminary"
+  },
+  {
+    eventId: "pdf-Para-Skidskytte-2026-03-07T14-00-00-01-00",
+    rawStart: "2026-03-07T14:00:00+01:00",
+    startTime: "2026-03-07T14:00:00+01:00",
+    stockholmTimeLabel: "14:00",
+    endTime: null,
+    sport: "Para-Skidskytte",
+    classification: null,
+    venue: null,
+    status: "upcoming",
+    isFinal: true,
+    countries: [],
+    title: "Women's Sprint"
+  }
+];
+
+// src/worker.js
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+    const GAMES_START = "2026-03-06";
+    const GAMES_END = "2026-03-15";
     const stockholmDate = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Europe/Stockholm",
       year: "numeric",
       month: "2-digit",
       day: "2-digit"
     }).format(/* @__PURE__ */ new Date());
+    const isPreGamesMode = stockholmDate < GAMES_START;
     const baseData = {
       lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
       stockholmDate,
-      source: "mock"
-      // Will be 'ipc' or 'olympics' when real
+      source: "mock",
+      preGames: isPreGamesMode
     };
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
@@ -161,33 +240,64 @@ var worker_default = {
       const res = await fetchWithTimeout(url2, { headers: { "User-Agent": "Mozilla/5.0" } });
       const data = await safeJson(res);
       if (!data || !data.units) return null;
-      const events = data.units.map((u) => ({
-        eventId: u.id || `oly-${Math.random().toString(36).substr(2, 9)}`,
-        startTime: u.startDate || null,
-        endTime: u.endDate || null,
-        sport: u.disciplineName || "Unknown",
-        classification: u.eventUnitName || null,
-        venue: u.venueName || null,
-        status: u.status || "upcoming",
-        isFinal: !!u.medal,
-        countries: u.competitors?.map((c) => c.noc) || [],
-        title: `${u.disciplineName || ""} \u2014 ${u.eventUnitName || ""}`
-      }));
+      const timeFormatter = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", hour: "2-digit", minute: "2-digit" });
+      const events = data.units.map((u) => {
+        let startTimeIso = u.startDate || null;
+        let stockholmTimeLabel = "TBA";
+        if (startTimeIso) {
+          if (!startTimeIso.includes("Z") && !startTimeIso.match(/[+-]\d{2}:\d{2}$/)) {
+            startTimeIso = startTimeIso + "+01:00";
+          }
+          try {
+            stockholmTimeLabel = timeFormatter.format(new Date(startTimeIso));
+          } catch (e) {
+          }
+        }
+        return {
+          eventId: u.id || `oly-${Math.random().toString(36).substr(2, 9)}`,
+          rawStart: u.startDate || null,
+          startTime: startTimeIso,
+          stockholmTimeLabel,
+          endTime: u.endDate || null,
+          sport: u.disciplineName || "Unknown",
+          classification: u.eventUnitName || null,
+          venue: u.venueName || null,
+          status: u.status || "upcoming",
+          isFinal: !!u.medal,
+          countries: u.competitors?.map((c) => c.noc) || [],
+          title: `${u.disciplineName || ""} \u2014 ${u.eventUnitName || ""}`
+        };
+      });
       return { schedule: events };
     }
     __name(fetchOlympicsSchedule, "fetchOlympicsSchedule");
+    async function getPdfScheduleEvents(dateFilter) {
+      const events = [];
+      for (const item of schedule_pdf_default) {
+        if (!item.rawStart.startsWith(dateFilter)) continue;
+        events.push(item);
+      }
+      return events;
+    }
+    __name(getPdfScheduleEvents, "getPdfScheduleEvents");
     async function fetchNormalizedSchedule(dateFilter, countryFilter, finalsFilter) {
       let rawEvents = [];
       const oly = await fetchOlympicsSchedule(dateFilter);
       let source = "olympics";
       let isError = false;
-      if (oly && oly.schedule) {
+      if (oly && oly.schedule && oly.schedule.length > 0) {
         rawEvents = oly.schedule;
       } else {
-        const mock = getMockData("/api/schedule");
-        rawEvents = mock.events || [];
-        source = "mock";
-        isError = true;
+        const pdfEvents = await getPdfScheduleEvents(dateFilter);
+        if (pdfEvents && pdfEvents.length > 0) {
+          rawEvents = pdfEvents;
+          source = "pdf-json";
+          isError = false;
+        } else {
+          source = "unavailable";
+          isError = true;
+          rawEvents = [];
+        }
       }
       if (countryFilter) {
         rawEvents = rawEvents.filter((e) => e.countries && e.countries.includes(countryFilter));
@@ -285,48 +395,92 @@ var worker_default = {
     }
     __name(fetchDataWithFallback, "fetchDataWithFallback");
     function getMockData(endpointPath) {
-      const mockEvents = [
-        { eventId: "oly-mock-1", startTime: new Date(Date.now() + 36e5).toISOString(), sport: "Para-Alpint", isFinal: true, countries: ["SWE", "NOR"], title: "Men's Downhill (LW2)" },
-        { eventId: "oly-mock-2", startTime: new Date(Date.now() + 72e5).toISOString(), sport: "Rullstols-curling", isFinal: false, countries: ["SWE", "CAN"], title: "Wheelchair Curling \u2014 Round Robin" },
-        { eventId: "oly-mock-3", startTime: new Date(Date.now() + 108e5).toISOString(), sport: "Para-Ishockey", isFinal: false, countries: ["USA", "CHN"], title: "Para Ice Hockey \u2014 Preliminary" }
-      ];
-      if (endpointPath === "/api/today") {
-        return {
-          ...baseData,
-          swedenMedals: 2,
-          swedenRank: 15,
-          nextSweStart: "14:30",
-          sweEvents: [{ id: "oly-mock-1", time: "14:30", sport: "Para-Alpint", athletes: "Men's Downhill (LW2)" }],
-          highlights: [{ time: "18:00", event: "Invigning", sport: "Ceremoni" }]
-        };
-      } else if (endpointPath === "/api/schedule") {
-        return { ...baseData, events: mockEvents };
-      } else if (endpointPath === "/api/sweden") {
-        return { ...baseData, events: mockEvents.filter((e) => e.countries.includes("SWE")) };
-      } else if (endpointPath === "/api/medals") {
-        return {
-          ...baseData,
-          standings: [
-            { countryCode: "CHN", gold: 10, silver: 5, bronze: 3, total: 18, rank: 1 },
-            { countryCode: "SWE", gold: 2, silver: 1, bronze: 0, total: 3, rank: 15 }
-          ]
-        };
-      } else if (endpointPath === "/api/results") {
-        return { ...baseData, latest: mockEvents };
-      } else if (endpointPath === "/api/news") {
-        return { ...baseData, articles: [] };
-      } else if (endpointPath === "/api/watch") {
-        return { ...baseData, broadcasts: [] };
-      }
       return null;
     }
     __name(getMockData, "getMockData");
-    responseData = await fetchDataWithFallback(path);
+    function decodeHtmlEntities(str) {
+      const entities = {
+        "&amp;": "&",
+        "&lt;": "<",
+        "&gt;": ">",
+        "&quot;": '"',
+        "&#39;": "'",
+        "&aring;": "\xE5",
+        "&auml;": "\xE4",
+        "&ouml;": "\xF6",
+        "&Aring;": "\xC5",
+        "&Auml;": "\xC4",
+        "&Ouml;": "\xD6"
+      };
+      return entities[str] || str;
+    }
+    __name(decodeHtmlEntities, "decodeHtmlEntities");
+    async function fetchNews() {
+      const rssUrl = "https://news.google.com/rss/search?q=Paralympics+OR+%22Milano+Cortina%22&hl=sv&gl=SE&ceid=SE:sv";
+      try {
+        const res = await fetchWithTimeout(rssUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+        if (!res.ok) throw new Error("RSS feed returned " + res.status);
+        const text = await res.text();
+        const items = [];
+        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+        let match;
+        while ((match = itemRegex.exec(text)) !== null && items.length < 15) {
+          const itemXml = match[1];
+          const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || itemXml.match(/<title>(.*?)<\/title>/);
+          const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
+          const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
+          const sourceMatch = itemXml.match(/<source[^>]*>(.*?)<\/source>/);
+          if (titleMatch && linkMatch) {
+            let cleanTitle = titleMatch[1].replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+            cleanTitle = cleanTitle.replace(/&#(\d+);/g, (match2, dec) => String.fromCharCode(dec));
+            cleanTitle = cleanTitle.replace(/&([a-z]+);/gi, (match2) => decodeHtmlEntities(match2));
+            cleanTitle = cleanTitle.split(" - ")[0];
+            items.push({
+              title: cleanTitle.trim(),
+              url: linkMatch[1],
+              publishedAt: pubDateMatch ? pubDateMatch[1] : null,
+              sourceName: sourceMatch ? sourceMatch[1] : "Nyheter"
+            });
+          }
+        }
+        if (items.length > 0) {
+          return { ...baseData, source: "rss", articles: items, error: false };
+        }
+        return { ...baseData, source: "unavailable", articles: [], error: true };
+      } catch (e) {
+        return { ...baseData, source: "unavailable", articles: [], error: true };
+      }
+    }
+    __name(fetchNews, "fetchNews");
+    if (path === "/api/today") {
+      responseData = await aggregateToday();
+    } else if (path === "/api/schedule") {
+      const dateFilter = url.searchParams.get("date") || stockholmDate;
+      const countryFilter = url.searchParams.get("country");
+      const finalsFilter = url.searchParams.get("finals");
+      const res = await fetchNormalizedSchedule(dateFilter, countryFilter, finalsFilter);
+      responseData = { ...baseData, events: res.schedule, source: res.source, error: res.error };
+    } else if (path === "/api/sweden") {
+      responseData = await aggregateSweden();
+    } else if (path === "/api/sweden_ipc") {
+      const resultsPayload = await fetchIpcResults();
+      const res = await fetchIpcSweden(resultsPayload);
+      responseData = res || { events: [] };
+    } else if (path === "/api/news") {
+      responseData = await fetchNews();
+    } else {
+      responseData = await fetchDataWithFallback(path);
+    }
     if (responseData) {
+      const isPdf = responseData.source === "pdf-json";
+      const isRss = responseData.source === "rss";
+      let cacheAge = 300;
+      if (isPdf) cacheAge = 86400;
+      if (isRss) cacheAge = 3600;
       return new Response(JSON.stringify(responseData), {
         headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=300, stale-while-revalidate=60",
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": `public, max-age=${cacheAge}, stale-while-revalidate=60`,
           ...corsHeaders
         }
       });
@@ -334,7 +488,7 @@ var worker_default = {
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404,
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
         ...corsHeaders
       }
     });
